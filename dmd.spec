@@ -1,13 +1,13 @@
 Summary:	Digital Mars D compiler
 Summary(pl.UTF-8):	Digital Mars D - kompilator języka D
 Name:		dmd
-Version:	2.062
+Version:	2.065.0
 Release:	1
 # Digital Mars is proprietary license (not redistributable)
-License:	Boost (D runtime, Phobos), GPL v1+ or Artistic (compiler frontend), Digital Mars (the rest)
+License:	Boost v1.0 (D runtime, Phobos), GPL v1+ or Artistic (compiler frontend), Digital Mars (the rest)
 Group:		Development/Languages
-Source0:	http://downloads.dlang.org.s3-website-us-east-1.amazonaws.com/releases/2013/%{name}.%{version}.zip
-# NoSource0-md5:	fd2211206532ab41a8aef764a9225d3c
+Source0:	http://downloads.dlang.org/releases/2014/%{name}.%{version}.zip
+# NoSource0-md5:	a17a699a7e4715658393819e9dc1814a
 NoSource:	0
 URL:		http://dlang.org/dmd-linux.html
 BuildRequires:	libstdc++-devel
@@ -34,7 +34,7 @@ echo "%{version}" > src/VERSION
 cp -p src/dmd/backendlicense.txt dmd-backendlicense.txt
 cp -p src/dmd/readme.txt dmd-readme.txt
 cp -p src/druntime/LICENSE druntime-LICENSE
-cp -p src/druntime/README druntime-README
+cp -p src/druntime/README.md druntime-README.md
 
 %build
 %{__make} -C src/dmd -f posix.mak \
@@ -66,13 +66,13 @@ rm -rf $RPM_BUILD_ROOT
 install -d $RPM_BUILD_ROOT{%{_includedir}/d/dmd/phobos,%{_libdir},%{_sysconfdir},%{_docdir}/dmd}
 
 install -Dp src/dmd/dmd $RPM_BUILD_ROOT%{_bindir}/dmd
-cp -p src/druntime/lib/libdruntime-linux%{model}.a $RPM_BUILD_ROOT%{_libdir}
+cp -p src/druntime/lib/libdruntime-linux%{model}* $RPM_BUILD_ROOT%{_libdir}
 cp -p src/phobos/generated/linux/release/%{model}/libphobos2.a $RPM_BUILD_ROOT%{_libdir}
 cp -pr src/druntime/import $RPM_BUILD_ROOT%{_includedir}/d/dmd/druntime
 cp -pr src/phobos/{std,*.d} $RPM_BUILD_ROOT%{_includedir}/d/dmd/phobos
 cp -pr src/druntime/doc $RPM_BUILD_ROOT%{_docdir}/dmd/druntime
 install -Dp man/man1/dmd.1 $RPM_BUILD_ROOT%{_mandir}/man1/dmd.1
-install -Dp man/man1/dmd.conf.5 $RPM_BUILD_ROOT%{_mandir}/man5/dmd.conf.5
+install -Dp man/man5/dmd.conf.5 $RPM_BUILD_ROOT%{_mandir}/man5/dmd.conf.5
 
 cat >$RPM_BUILD_ROOT%{_sysconfdir}/dmd.conf <<EOF
 [Environment]
@@ -87,6 +87,8 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.TXT license.txt dmd-*.txt druntime-*
 %attr(755,root,root) %{_bindir}/dmd
 %{_libdir}/libdruntime-linux%{model}.a
+%{_libdir}/libdruntime-linux%{model}so.a
+%{_libdir}/libdruntime-linux%{model}so.o
 %{_libdir}/libphobos2.a
 %{_sysconfdir}/dmd.conf
 %dir %{_includedir}/d
