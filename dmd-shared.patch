@@ -1,0 +1,13 @@
+--- dmd2/src/dmd/mars.c.orig	2014-02-24 05:23:02.000000000 +0100
++++ dmd2/src/dmd/mars.c	2014-03-21 22:34:04.073943985 +0100
+@@ -568,9 +568,7 @@
+ #if TARGET_WINDOS
+     global.params.is64bit = false;
+     global.params.defaultlibname = "phobos";
+-#elif TARGET_LINUX
+-    global.params.defaultlibname = "libphobos2.a";
+-#elif TARGET_OSX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS
++#elif TARGET_OSX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS || TARGET_LINUX
+     global.params.defaultlibname = "phobos2";
+ #else
+ #error "fix this"

@@ -1,0 +1,31 @@
+--- dmd2/src/phobos/posix.mak.orig	2014-02-24 05:23:10.000000000 +0100
++++ dmd2/src/phobos/posix.mak	2014-03-21 19:46:59.187698023 +0100
+@@ -147,7 +147,7 @@
+ 	PATHSEP:=$(shell echo "\\")
+ endif
+ 
+-LINKDL:=$(if $(findstring $(OS),linux),-L-ldl,)
++LINKDL:=$(if $(findstring $(OS),linux),-L-ldl -L-lz,)
+ 
+ # Set VERSION, where the file is that contains the version string
+ VERSION=../dmd/VERSION
+@@ -236,8 +236,6 @@
+ # Aggregate all C files over all OSs (this is for the zip file)
+ ALL_C_FILES = $(C_FILES) $(C_EXTRAS)
+ 
+-OBJS = $(addsuffix $(DOTOBJ),$(addprefix $(ROOT)/,$(C_MODULES)))
+-
+ MAKEFILE = $(firstword $(MAKEFILE_LIST))
+ 
+ SUBMAKE = $(MAKE) --no-print-directory OS=$(OS) -f $(MAKEFILE)
+@@ -274,8 +272,8 @@
+ 	@[ -d $(dir $@) ] || mkdir -p $(dir $@) || [ -d $(dir $@) ]
+ 	$(CC) -c $(CFLAGS) $< -o$@
+ 
+-$(LIB) : $(OBJS) $(ALL_D_FILES) druntime_libs
+-	$(DMD) $(DFLAGS) -lib -of$@ $(DRUNTIME) $(D_FILES) $(OBJS)
++$(LIB) : $(ALL_D_FILES) druntime_libs
++	$(DMD) $(DFLAGS) -lib -of$@ $(DRUNTIME) $(D_FILES)
+ 
+ dll : $(ROOT)/libphobos2.so
+ 
