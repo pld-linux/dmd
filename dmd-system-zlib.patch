@@ -29,3 +29,14 @@
  
  dll : $(ROOT)/libphobos2.so
  
+--- dmd2/tools/posix.mak.orig	2014-02-13 16:09:46.000000000 +0100
++++ dmd2/tools/posix.mak	2014-03-22 10:01:55.092212006 +0100
+@@ -102,7 +102,7 @@
+ #dreadful custom step because of libcurl dmd linking problem (Bugzilla 7044)
+ $(CURL_TOOLS): $(ROOT)/%: %.d
+ 	$(DMD) -c -of$(@).o $(<)
+-	($(DMD) -v -of$(@) $(@).o 2>/dev/null | grep '\-Xlinker' | cut -f2- -d' ' ; echo -lcurl  ) | xargs $(CC)
++	($(DMD) -v -of$(@) $(@).o 2>/dev/null | grep '\-Xlinker' | cut -f2- -d' ' ; echo -lcurl -lz) | xargs $(CC)
+ 
+ $(TOOLS) $(DOC_TOOLS): $(ROOT)/%: %.d
+ 	$(DMD) $(MODEL_FLAG) $(DFLAGS) -of$(@) $(<)
