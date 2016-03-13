@@ -1,0 +1,10 @@
+--- dmd2/src/dmd/posix.mak.orig	2016-03-03 11:42:12.000000000 +0100
++++ dmd2/src/dmd/posix.mak	2016-03-13 08:59:49.245630206 +0100
+@@ -126,6 +126,7 @@
+ 
+ # Default compiler flags for all source files
+ CFLAGS := $(WARNINGS) \
++	$(CXXOPTFLAGS) \
+ 	-fno-exceptions -fno-rtti \
+ 	-D__pascal= -DMARS=1 -DTARGET_$(OS_UPCASE)=1 -DDM_TARGET_CPU_$(TARGET_CPU)=1 \
+ 	$(MODEL_FLAG)
