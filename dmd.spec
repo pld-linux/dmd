@@ -6,15 +6,15 @@
 Summary:	Digital Mars D compiler
 Summary(pl.UTF-8):	Digital Mars D - kompilator języka D
 Name:		dmd
-Version:	2.070.2
+Version:	2.072.0
 Release:	1
 # Digital Mars is proprietary license (not redistributable)
 License:	Boost v1.0 (D runtime, Phobos, tools), GPL v1+ or Artistic (frontend), Digital Mars (backend)
 Group:		Development/Languages
 Source0:	http://downloads.dlang.org/releases/2.x/%{version}/%{name}.%{version}.linux.tar.xz
-# NoSource0-md5:	309e6968abb813a654d24ba43aba832f
-Source1:	https://github.com/D-Programming-Language/tools/archive/v%{version}/d-tools-%{version}.tar.gz
-# Source1-md5:	8e664bb5b8849b373a210b6ebff27633
+# NoSource0-md5:	5928fdc2065fec9440f5d255146384ad
+Source1:	https://github.com/dlang/tools/archive/v%{version}/d-tools-%{version}.tar.gz
+# Source1-md5:	3244aab8bb1583c3c970d8a702dd5280
 Patch0:		%{name}-system-zlib.patch
 Patch1:		%{name}-opt.patch
 Patch2:		%{name}-shared.patch
@@ -131,6 +131,9 @@ install tools/generated/linux/%{model}/{ddemangle,rdmd} $RPM_BUILD_ROOT%{_bindir
 install -Dp man/man1/dmd.1 $RPM_BUILD_ROOT%{_mandir}/man1/dmd.1
 install -Dp man/man5/dmd.conf.5 $RPM_BUILD_ROOT%{_mandir}/man5/dmd.conf.5
 
+# some intermediate(?) object disliked a lot by ldconfig
+%{__rm} $RPM_BUILD_ROOT%{_libdir}/libdruntime.so.a
+
 cat >$RPM_BUILD_ROOT%{_sysconfdir}/dmd.conf <<EOF
 [Environment]
 DFLAGS=-I/usr/include/d/dmd/phobos -I/usr/include/d/dmd/druntime -L-L%{_libdir} -L--no-warn-search-mismatch -L--export-dynamic
@@ -144,8 +147,8 @@ rm -rf $RPM_BUILD_ROOT
 
 %files libs
 %defattr(644,root,root,755)
-%attr(755,root,root) %{_libdir}/libphobos2.so.0.70.2
-%attr(755,root,root) %ghost %{_libdir}/libphobos2.so.0.70
+%attr(755,root,root) %{_libdir}/libphobos2.so.0.72.0
+%attr(755,root,root) %ghost %{_libdir}/libphobos2.so.0.72
 
 %files
 %defattr(644,root,root,755)
@@ -154,9 +157,8 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) %{_bindir}/dmd
 %attr(755,root,root) %{_bindir}/rdmd
 %attr(755,root,root) %{_libdir}/libphobos2.so
-%{_libdir}/libdruntime.so.a
 %{_libdir}/libdruntime.so.o
-%{_libdir}/libphobos2.so.0.70.o
+%{_libdir}/libphobos2.so.0.72.o
 %{_sysconfdir}/dmd.conf
 %dir %{_includedir}/d
 %{_includedir}/d/dmd
