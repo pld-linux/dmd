@@ -1,31 +1,93 @@
---- dmd2/src/phobos/posix.mak.orig	2015-04-25 05:20:30.000000000 +0200
-+++ dmd2/src/phobos/posix.mak	2015-07-22 15:28:25.126243307 +0200
-@@ -160,7 +160,7 @@
- 	PATHSEP:=$(shell echo "\\")
- endif
+--- dmd2/src/phobos/Makefile.orig	2024-12-02 16:50:03.490099174 +0100
++++ dmd2/src/phobos/Makefile	2024-12-02 19:45:41.494624384 +0100
+@@ -175,6 +175,7 @@ endif
+ UDFLAGS=-unittest -version=StdUnittest
  
--LINKDL:=$(if $(findstring $(OS),linux),-L-ldl,)
-+LINKDL:=$(if $(findstring $(OS),linux),-L-ldl -L-lz,)
+ LINKDL:=$(if $(findstring $(OS),linux),-L-ldl,)
++LINKZ:=$(if $(findstring $(OS),linux),-L-lz,)
  
- # Set VERSION, where the file is that contains the version string
- VERSION=../dmd/VERSION
-@@ -262,7 +262,7 @@
- # Aggregate all C files over all OSs (this is for the zip file)
- ALL_C_FILES = $(C_FILES) $(C_EXTRAS)
+ # use timelimit to avoid deadlocks if available
+ TIMELIMIT:=$(if $(shell which timelimit 2>/dev/null || true),timelimit -t 90 ,)
+@@ -290,17 +291,6 @@ ALL_D_FILES = $(addsuffix .d, $(STD_MODU
+   $(EXTRA_MODULES_LINUX) $(EXTRA_MODULES_OSX) $(EXTRA_MODULES_FREEBSD) \
+   $(EXTRA_MODULES_WIN32) $(EXTRA_MODULES_INTERNAL))
  
--OBJS = $(addsuffix $(DOTOBJ),$(addprefix $(ROOT)/,$(C_MODULES)))
-+OBJS =
+-# C files to be part of the build
+-C_MODULES := $(addprefix etc/c/zlib/, adler32 compress crc32 deflate	\
+-	gzclose gzlib gzread gzwrite infback inffast inflate inftrees trees uncompr zutil)
+-C_FILES := $(addsuffix .c, $(C_MODULES))
+-
+-ifeq ($(USE_IMPORTC),1)
+-    C_OBJS := $(ROOT)/zlib$(DOTOBJ)
+-else
+-    C_OBJS := $(addprefix $(ROOT)/, $(addsuffix $(DOTOBJ), $(C_MODULES)))
+-endif
+-
+ # build with shared library support (defaults to true on supported platforms)
+ SHARED=$(if $(findstring $(OS),linux freebsd),1,)
  
- MAKEFILE = $(firstword $(MAKEFILE_LIST))
+@@ -345,18 +335,8 @@ endif
+ lib: $(LIB)
+ dll: $(ROOT)/libphobos2.so
  
---- dmd2/tools/posix.mak.orig	2015-07-21 22:13:45.308848546 +0200
-+++ dmd2/tools/posix.mak	2015-07-22 15:29:39.346240185 +0200
-@@ -103,7 +103,7 @@
- 	$(DMD) $(MODEL_FLAG) $(DFLAGS) -c -of$(@).o $(<)
- # grep for the linker invocation and append -lcurl
- 	LINKCMD=$$($(DMD) $(MODEL_FLAG) $(DFLAGS) -v -of$(@) $(@).o 2>/dev/null | grep $(@).o); \
--	$${LINKCMD} -lcurl
-+	$${LINKCMD} -lcurl -lz
+-ifeq ($(USE_IMPORTC),1)
+-# the druntime dependency makes sure DMD has been built
+-$(ROOT)/zlib$(DOTOBJ): $(C_FILES) $(DRUNTIME)
+-	$(DMD) -c $(DFLAGS) $(addprefix -P=,$(CPPFLAGS) -Ietc/c/zlib) -of$@ $(C_FILES)
+-else
+-$(ROOT)/%$(DOTOBJ): %.c
+-	@[ -d $(dir $@) ] || mkdir -p $(dir $@) || [ -d $(dir $@) ]
+-	$(CC) -c $(CFLAGS) $(CPPFLAGS) $< $(CC_OUTFILEFLAG)$@
+-endif
+-
+-$(LIB): $(C_OBJS) $(ALL_D_FILES) $(DRUNTIME)
+-	$(DMD) $(DFLAGS) -lib -of$@ $(DRUNTIME) $(D_FILES) $(C_OBJS)
++$(LIB): $(ALL_D_FILES) $(DRUNTIME)
++	$(DMD) $(DFLAGS) -lib -of$@ $(DRUNTIME) $(D_FILES)
  
- $(TOOLS) $(DOC_TOOLS): $(ROOT)/%: %.d
- 	$(DMD) $(MODEL_FLAG) $(DFLAGS) -of$(@) $(<)
+ $(ROOT)/libphobos2.so: $(ROOT)/$(SONAME)
+ 	ln -sf $(notdir $(LIBSO)) $@
+@@ -365,8 +345,8 @@ $(ROOT)/$(SONAME): $(LIBSO)
+ 	ln -sf $(notdir $(LIBSO)) $@
+ 
+ $(LIBSO): override PIC:=-fPIC
+-$(LIBSO): $(C_OBJS) $(ALL_D_FILES) $(DRUNTIMESO)
+-	$(DMD) $(DFLAGS) -shared $(NODEFAULTLIB) -of$@ -L-soname=$(SONAME) $(DRUNTIMESO) $(LINKDL) $(D_FILES) $(C_OBJS)
++$(LIBSO): $(ALL_D_FILES) $(DRUNTIMESO)
++	$(DMD) $(DFLAGS) -shared $(NODEFAULTLIB) -of$@ -L-soname=$(SONAME) $(DRUNTIMESO) $(LINKDL) $(LINKZ) $(D_FILES)
+ 
+ ifeq (osx,$(OS))
+ # Build fat library that combines the 32 bit and the 64 bit libraries
+@@ -407,8 +387,8 @@ ifneq (1,$(SHARED))
+ 
+ $(UT_D_OBJS): $(DRUNTIME)
+ 
+-$(ROOT)/unittest/test_runner$(DOTEXE): $(DRUNTIME_PATH)/src/test_runner.d $(UT_D_OBJS) $(C_OBJS) $(DRUNTIME)
+-	$(DMD) $(DFLAGS) $(UDFLAGS) -of$@ $(DRUNTIME_PATH)/src/test_runner.d $(UT_D_OBJS) $(C_OBJS) $(DRUNTIME) $(LINKDL) $(NODEFAULTLIB)
++$(ROOT)/unittest/test_runner$(DOTEXE): $(DRUNTIME_PATH)/src/test_runner.d $(UT_D_OBJS) $(DRUNTIME)
++	$(DMD) $(DFLAGS) $(UDFLAGS) -of$@ $(DRUNTIME_PATH)/src/test_runner.d $(UT_D_OBJS) $(DRUNTIME) $(LINKDL) $(LINKZ) $(NODEFAULTLIB)
+ 
+ else
+ 
+@@ -417,8 +397,8 @@ UT_LIBSO:=$(ROOT)/unittest/libphobos2-ut
+ $(UT_D_OBJS): $(DRUNTIMESO)
+ 
+ $(UT_LIBSO): override PIC:=-fPIC
+-$(UT_LIBSO): $(UT_D_OBJS) $(C_OBJS) $(DRUNTIMESO)
+-	$(DMD) $(DFLAGS) -shared $(UDFLAGS) -of$@ $(UT_D_OBJS) $(C_OBJS) $(DRUNTIMESO) $(LINKDL) $(NODEFAULTLIB)
++$(UT_LIBSO): $(UT_D_OBJS) $(DRUNTIMESO)
++	$(DMD) $(DFLAGS) -shared $(UDFLAGS) -of$@ $(UT_D_OBJS) $(DRUNTIMESO) $(LINKDL) $(LINKZ) $(NODEFAULTLIB)
+ 
+ $(ROOT)/unittest/test_runner$(DOTEXE): $(DRUNTIME_PATH)/src/test_runner.d $(UT_LIBSO)
+ 	$(DMD) $(DFLAGS) -of$@ $< -L$(UT_LIBSO) $(NODEFAULTLIB)
+--- dmd2/src/dmd/dmd/link.d.orig	2024-06-30 18:32:38.000000000 +0200
++++ dmd2/src/dmd/dmd/link.d	2024-12-02 21:54:42.175979964 +0100
+@@ -725,6 +725,8 @@ public int runLINK(bool verbose, ErrorSi
+                     argv.push(getbuf(libname[3 .. $-2]));
+                     argv.push("-Xlinker");
+                     argv.push("-Bdynamic");
++                    if (libname == "libphobos2.a")
++                        argv.push("-lz");
+                 }
+                 else if (libname[$-3 .. $] == ".so")
+                     argv.push(getbuf(libname[3 .. $-3]));

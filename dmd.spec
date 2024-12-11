@@ -1,27 +1,25 @@
 #
 # Conditional build:
 %bcond_with	bootstrap	# bootstrap using upstream binaries
-%bcond_with	dynamic		# dynamic linking with libphobos (doesn't work properly as of 2.065.0)
+%bcond_without	dynamic		# dynamic linking with libphobos (static doesn't work properly as of 2.109.1)
 #
 Summary:	Digital Mars D compiler
 Summary(pl.UTF-8):	Digital Mars D - kompilator języka D
 Name:		dmd
-Version:	2.072.0
+Version:	2.109.1
 Release:	1
-# Digital Mars is proprietary license (not redistributable)
-License:	Boost v1.0 (D runtime, Phobos, tools), GPL v1+ or Artistic (frontend), Digital Mars (backend)
+License:	Boost v1.0
 Group:		Development/Languages
 Source0:	http://downloads.dlang.org/releases/2.x/%{version}/%{name}.%{version}.linux.tar.xz
-# NoSource0-md5:	5928fdc2065fec9440f5d255146384ad
+# Source0-md5:	4ac0c77e283fb5b14da94e187532ba12
 Source1:	https://github.com/dlang/tools/archive/v%{version}/d-tools-%{version}.tar.gz
-# Source1-md5:	3244aab8bb1583c3c970d8a702dd5280
+# Source1-md5:	c32c0dc33c7a3b16e631cc9dd6b08f34
 Patch0:		%{name}-system-zlib.patch
-Patch1:		%{name}-opt.patch
 Patch2:		%{name}-shared.patch
-NoSource:	0
-URL:		http://dlang.org/dmd-linux.html
+Patch3:		%{name}-make.patch
+URL:		https://dlang.org/dmd-linux.html
 BuildRequires:	curl-devel
-%{!?with_bootstrap:BuildRequires:	dmd >= 2.068.2}
+%{!?with_bootstrap:BuildRequires:	dmd >= 2.095.0}
 BuildRequires:	libstdc++-devel
 BuildRequires:	zlib-devel
 %if %{with dynamic}
@@ -29,8 +27,13 @@ Requires:	%{name}-libs = %{version}-%{release}
 %endif
 # used as linker
 Requires:	gcc
+%if %{without dynamic}
+Requires:	zlib-devel
+%endif
 ExclusiveArch:	%{ix86} %{x8664}
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
+
+%define		_debugsource_packages	%{nil}
 
 %ifarch %{ix86}
 %define		model	32
@@ -72,45 +75,59 @@ Biblioteki statyczne Phobos oraz D-runtime dla języka D.
 %{__mv} tools-%{version} tools
 
 %patch0 -p1
-%patch1 -p1
 %{?with_dynamic:%patch2 -p1}
+%patch3 -p1
 
+# for DMD
+echo "%{version}" > VERSION
+# for Phobos
 echo "%{version}" > src/dmd/VERSION
 
-cp -p src/dmd/backendlicense.txt dmd-backendlicense.txt
-cp -p src/dmd/readme.txt dmd-readme.txt
-cp -p src/druntime/LICENSE druntime-LICENSE
+cp -p src/dmd/README.md dmd-README.md
 cp -p src/druntime/README.md druntime-README.md
 
+# TODO: patch
+sed -i -e 's,/compiler/src/,/dmd/,' src/druntime/Makefile
+sed -i -e 's,/compiler/src/,/,' src/phobos/Makefile
+
 %build
-%{__make} -C src/dmd -f posix.mak \
-	OS=LINUX \
-	TARGET_CPU=X86 \
-	MODEL=%{model} \
-	HOST_CC="%{__cxx}" \
-	%{?with_bootstrap:HOST_DMD=$(pwd)/linux/bin%{model}/dmd} \
-	CXXOPTFLAGS="%{rpmcxxflags}"
+%if %{with bootstrap}
+HOST_DMD=$(pwd)/linux/bin%{model}/dmd
+HOST_RDMD=$(pwd)/linux/bin%{model}/rdmd
+%else
+HOST_DMD=dmd
+HOST_RDMD=rdmd
+%endif
 
-DMD=$(pwd)/src/dmd/dmd
+cd src/dmd
+$HOST_RDMD build.d -v \
+	CXX="%{__cxx}" \
+	CXXFLAGS="%{rpmcxxflags}" \
+	ENABLE_RELEASE=1 \
+	HOST_DMD="$HOST_DMD" \
+	MODEL=%{model}
+cd ../..
 
-%{__make} -C src/druntime -f posix.mak \
+DMD=$(pwd)/generated/linux/release/%{model}/dmd
+
+%{__make} -C src/druntime \
 	OS=linux \
 	MODEL=%{model} \
+	DMD="$DMD" \
 	CC="%{__cc}" \
 	CFLAGS="%{rpmcflags} -m%{model} -fPIC -DHAVE_UNISTD_H" \
-	DMD="$DMD" \
 	PIC="-fPIC"
 
-%{__make} -C src/phobos -f posix.mak \
+%{__make} -C src/phobos \
 	OS=linux \
 	MODEL=%{model} \
+	DMD="$DMD" \
+	DRUNTIME_PATH="$(pwd)/src/druntime" \
 	CC="%{__cc}" \
 	CFLAGS="%{rpmcflags} -m%{model} -fPIC -DHAVE_UNISTD_H" \
-	DMD="$DMD" \
-	LIBCURL_STUB= \
-	PIC="-fPIC"
+	PIC=1
 
-%{__make} -C tools -f posix.mak \
+%{__make} -C tools \
 	OS=linux \
 	MODEL=%{model} \
 	CC="%{__cc}" \
@@ -120,9 +137,9 @@ DMD=$(pwd)/src/dmd/dmd
 rm -rf $RPM_BUILD_ROOT
 install -d $RPM_BUILD_ROOT{%{_includedir}/d/dmd/phobos/etc/c,%{_libdir},%{_sysconfdir},%{_docdir}/dmd}
 
-install -Dp src/dmd/dmd $RPM_BUILD_ROOT%{_bindir}/dmd
-cp -p src/druntime/generated/linux/release/%{model}/libdruntime* $RPM_BUILD_ROOT%{_libdir}
+install -Dp generated/linux/release/%{model}/dmd $RPM_BUILD_ROOT%{_bindir}/dmd
 cp -a src/phobos/generated/linux/release/%{model}/libphobos2.so* $RPM_BUILD_ROOT%{_libdir}
+%{__rm} $RPM_BUILD_ROOT%{_libdir}/libphobos2.so*.o
 cp -p src/phobos/generated/linux/release/%{model}/libphobos2.a $RPM_BUILD_ROOT%{_libdir}
 cp -pr src/druntime/import $RPM_BUILD_ROOT%{_includedir}/d/dmd/druntime
 cp -pr src/phobos/{std,*.d} $RPM_BUILD_ROOT%{_includedir}/d/dmd/phobos
@@ -130,9 +147,6 @@ cp -p src/phobos/etc/c/*.d $RPM_BUILD_ROOT%{_includedir}/d/dmd/phobos/etc/c
 install tools/generated/linux/%{model}/{ddemangle,rdmd} $RPM_BUILD_ROOT%{_bindir}
 install -Dp man/man1/dmd.1 $RPM_BUILD_ROOT%{_mandir}/man1/dmd.1
 install -Dp man/man5/dmd.conf.5 $RPM_BUILD_ROOT%{_mandir}/man5/dmd.conf.5
-
-# some intermediate(?) object disliked a lot by ldconfig
-%{__rm} $RPM_BUILD_ROOT%{_libdir}/libdruntime.so.a
 
 cat >$RPM_BUILD_ROOT%{_sysconfdir}/dmd.conf <<EOF
 [Environment]
@@ -147,18 +161,16 @@ rm -rf $RPM_BUILD_ROOT
 
 %files libs
 %defattr(644,root,root,755)
-%attr(755,root,root) %{_libdir}/libphobos2.so.0.72.0
-%attr(755,root,root) %ghost %{_libdir}/libphobos2.so.0.72
+%attr(755,root,root) %{_libdir}/libphobos2.so.0.109.1
+%attr(755,root,root) %ghost %{_libdir}/libphobos2.so.0.109
 
 %files
 %defattr(644,root,root,755)
-%doc README.TXT license.txt dmd-*.txt druntime-*
+%doc README.TXT license.txt dmd-*.md druntime-*.md
 %attr(755,root,root) %{_bindir}/ddemangle
 %attr(755,root,root) %{_bindir}/dmd
 %attr(755,root,root) %{_bindir}/rdmd
 %attr(755,root,root) %{_libdir}/libphobos2.so
-%{_libdir}/libdruntime.so.o
-%{_libdir}/libphobos2.so.0.72.o
 %{_sysconfdir}/dmd.conf
 %dir %{_includedir}/d
 %{_includedir}/d/dmd
@@ -170,5 +182,4 @@ rm -rf $RPM_BUILD_ROOT
 %files static
 %defattr(644,root,root,755)
 %endif
-%{_libdir}/libdruntime.a
 %{_libdir}/libphobos2.a

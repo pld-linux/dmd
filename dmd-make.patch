@@ -1,0 +1,19 @@
+--- dmd2/tools/Makefile.orig	2024-06-03 00:59:36.000000000 +0200
++++ dmd2/tools/Makefile	2024-12-02 20:13:19.997432332 +0100
+@@ -1,4 +1,4 @@
+-DMD_DIR = ../dmd
++DMD_DIR = ..
+ BUILD = release
+ DMD = $(DMD_DIR)/generated/$(OS)/$(BUILD)/$(MODEL)/dmd
+ INSTALL_DIR = ../install
+@@ -9,9 +9,7 @@ DUB=dub
+ WITH_DOC = no
+ DOC = ../dlang.org
+ 
+-# Load operating system $(OS) (e.g. linux, osx, ...) and $(MODEL) (e.g. 32, 64) detection Makefile from dmd
+-$(shell [ ! -d $(DMD_DIR) ] && git clone --depth=1 https://github.com/dlang/dmd $(DMD_DIR))
+-include $(DMD_DIR)/compiler/src/osmodel.mak
++include $(DMD_DIR)/src/dmd/osmodel.mak
+ 
+ ifeq (windows,$(OS))
+     DOTEXE:=.exe
